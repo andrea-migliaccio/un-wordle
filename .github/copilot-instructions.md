@@ -1,115 +1,123 @@
 # Copilot Instructions — Wordle Clone
 
 ## Project Overview
-Client-side Wordle replica: Plain JavaScript (ES6), HTML5, CSS3 with Firebase Auth + Firestore. No frameworks, no npm dependencies, no build tools. Deployed to GitHub Pages.
+Client-side Wordle replica: Plain JavaScript (ES6), HTML5, CSS3 with Firebase Auth + Firestore. No frameworks, no npm dependencies, no build tools. Deployed to GitHub Pages via GitHub Actions.
 
-**Core Features:** Google/Gmail login (required) → Daily word via NYTimes endpoint → Play, save stats, view history, share results.
+**Core Features:** Google/Gmail login (required) → Daily word via NYTimes endpoint → Play, navigate past days, save stats, view history, share results. Word validation against the official Wordle word list.
 
 ## Architecture Decisions
 
 ### Tech Stack
 - **Frontend:** Vanilla JavaScript (ES6), HTML5, CSS3 only
 - **External Libraries:** Firebase SDK via CDN (`<script>` tags only) — **No npm, no bundling**
-- **Hosting:** GitHub Pages (static files)
+- **Hosting:** GitHub Pages, deployed via `.github/workflows/deploy.yml` on push to `main`
 - **Database:** Firebase Firestore (client-side only)
 - **Auth:** Firebase Authentication (Google provider)
-- **Daily Word:** NYTimes public endpoint (`https://www.nytimes.com/svc/wordle/v2/YYYY-MM-DD.json`)
+- **Daily Word:** NYTimes public endpoint (`https://www.nytimes.com/svc/wordle/v2/YYYY-MM-DD.json`) — requires CORS proxy (`https://corsproxy.io/?`) because NYTimes does not set `Access-Control-Allow-Origin`
+- **Word Validation:** `https://raw.githubusercontent.com/tabatkins/wordle-list/main/words` — CORS open, no proxy needed; loaded once at login and cached as a `Set<string>`
 
-### Repository Structure (Planned)
+### Repository Structure
 ```
 wordle/
-├── index.html                 # Main entry point
+├── index.html                    # Main entry point
 ├── css/
-│   └── style.css             # All styling (responsive, no framework)
+│   └── style.css                 # All styling (responsive, dark theme, animations)
 ├── js/
-│   ├── app.js                # Main app controller
-│   ├── game.js               # Game logic (5-letter, 6 tries, feedback)
-│   ├── auth.js               # Firebase Auth (login/logout)
-│   ├── firebase-config.js    # Firebase project config (public, no secrets)
-│   ├── firestore.js          # Persist games, stats, user data
-│   └── utils.js              # Helpers (word validation, share formatting)
+│   ├── app.js                    # Main controller: auth flow, game lifecycle, UI events
+│   ├── game.js                   # Board/keyboard rendering, NYTimes fetch, word list
+│   ├── auth.js                   # Firebase Auth (Google provider, login/logout)
+│   ├── firebase-config.js        # Firebase project config (public keys — no secrets)
+│   ├── firestore.js              # All Firestore operations (games, stats, profile)
+│   └── utils.js                  # Pure helpers: feedback algo, share format, date
 ├── .github/
+│   ├── workflows/deploy.yml      # GitHub Pages deploy on push to main
 │   └── copilot-instructions.md  # This file
-└── README.md                     # User-facing documentation
+└── READEM.md                     # Dev notes (local server instructions)
 ```
 
 ### Key Conventions
 
 1. **Firebase CDN Setup**
-   - Include Firebase scripts in `index.html` via `<script>` tags (not npm)
-   - Example: `<script src="https://www.gstatic.com/firebasejs/..."></script>`
-   - Config stored in plain `js/firebase-config.js` (no secrets—use public API key only)
+   - Firebase imported via `<script src="https://www.gstatic.com/firebasejs/10.8.0/...">` in `index.html`
+   - Compat mode (`firebase-app-compat.js`) — use `firebase.auth()`, `firebase.firestore()` globals
+   - Config in `js/firebase-config.js` — safe to commit (access controlled by Firestore Security Rules)
+   - Add both `localhost` and the GitHub Pages domain to Firebase Auth → Authorized Domains
 
 2. **Game State Management**
-   - Single source of truth: `window.gameState` object (vanilla JS, no stores)
-   - Example structure:
-     ```javascript
-     window.gameState = {
-       currentGame: { guesses: [], targetWord: null, attempts: 0, status: 'playing' },
-       user: { uid, displayName, email },
-       stats: { wins: 0, losses: 0, streak: 0, distribution: [0,0,0,0,0,0] }
-     }
-     ```
+   - Single source of truth: `window.gameState` (reset on logout)
+   ```javascript
+   window.gameState = {
+     currentGame: { date, puzzleId, targetWord, guesses, feedback, currentGuess, status },
+     user:        { uid, displayName, email },
+     stats:       { gamesPlayed, gamesWon, currentStreak, maxStreak, distribution },
+     keyboard:    {}  // letter → 'correct' | 'present' | 'absent'
+   }
+   ```
+   - `currentGame.date` is the **navigated date**, not necessarily today — use `Utils.todayString()` for "today"
+   - `currentGame.status`: `'playing' | 'won' | 'lost'`
 
-3. **Firestore Collections**
-   - `users/{uid}` — user profile (displayName, email, created, updated)
-   - `users/{uid}/games/{gameId}` — game records (date, guesses, targetWord, result, time)
-   - `users/{uid}/stats` — aggregated stats (wins, losses, streak, distribution)
-   - Security rules: authenticated users can only read/write their own data
+3. **Firestore Schema**
+   - `users/{uid}` — profile (displayName, email, updatedAt)
+   - `users/{uid}/games/{YYYY-MM-DD}` — one document per day per user
+   - `users/{uid}/stats/summary` — aggregated stats document
+   - **Nested arrays are not supported by Firestore.** `feedback` (array of arrays) is serialized as an array of comma-joined strings on save and deserialized on load — this is handled transparently inside `firestore.js` (`serializeFeedback` / `deserializeFeedback`). The rest of the codebase always works with the native `string[][]` format.
 
 4. **Code Organization**
-   - Each module exports a single namespace (e.g., `Game`, `Auth`, `Firestore`)
-   - No async/await — use `.then()` chains for clarity with Firebase promises
-   - HTML is the source of truth for UI state (no virtual DOM)
+   - Each JS file exposes one module-level `const` (e.g. `Game`, `Auth`, `Firestore`, `Utils`, `App`)
+   - No `async/await` — use `.then()` chains throughout for Firebase promise consistency
+   - HTML is the source of truth for UI state (show/hide via `.hidden` class)
+   - Script load order in `index.html` matters: Firebase SDKs → `firebase-config.js` → `auth.js` → `utils.js` → `firestore.js` → `game.js` → `app.js`
 
 5. **Game Logic**
    - **Wordle Rules:** 5-letter words, 6 attempts max, color feedback (green=correct, yellow=present, gray=absent)
-   - Word validation: check against valid guesses list (can fetch from NYTimes endpoint or local list)
-   - Feedback computation: compare guess against target word, return color array
+   - Feedback algorithm in `Utils.computeFeedback(guess, target)` — handles duplicate letters correctly (two-pass)
+   - Word validation: `Game.loadWordList()` fetches the list once at login; `Game.isValidWord(word)` checks against the cached `Set`. Fail-open if list not yet loaded.
+   - Invalid word → shake row + toast "Parola non valida!", attempt not consumed
 
-6. **Share Feature**
-   - Format: emoji grid (🟩🟨⬜) per row + game metadata (date, attempt count)
-   - Copy to clipboard via standard `navigator.clipboard.writeText()`
-   - Example: `Wordle 1,234 5/6\n🟩⬜🟨⬜⬜\n...`
+6. **Date Navigation**
+   - The `#date-nav` bar (← puzzle# + date →) appears above the board
+   - `→` button is `disabled` when `currentGame.date >= Utils.todayString()`
+   - Navigation calls `loadDate(dateStr)` in `app.js`, which resets the board and either restores an existing game (read-only) or starts a fresh playable game
+   - Past unplayed games can be played and saved normally
 
-7. **Styling**
-   - Mobile-first responsive design (CSS Grid/Flexbox only, no Bootstrap/Tailwind)
-   - Color scheme: match NYTimes Wordle (greens, yellows, grays, dark mode support)
-   - Single `css/style.css` file (no SCSS/preprocessors)
+7. **Share Feature**
+   - Format: emoji grid (🟩🟨⬛) per row + `Wordle #N X/6` header
+   - `Utils.formatShare(puzzleId, guesses, feedback, status)` → clipboard via `navigator.clipboard.writeText()`
+   - Share button visible in the stats modal only when the current game is finished
 
-8. **Authentication Flow**
-   - User lands on index.html → check `auth.currentUser`
-   - If not logged in: show login button (Google Sign-In popup)
-   - On login: redirect to game board, load user stats from Firestore
-   - On logout: clear `gameState`, redirect to login screen
+8. **Styling**
+   - Mobile-first, dark theme matching NYTimes Wordle palette
+   - CSS custom properties in `:root` for colors and tile size
+   - Tile animations: `pop` (letter typed), `flip-out/flip-in` (reveal), `bounce` (win), `shake` (invalid)
+   - Responsive breakpoints at `max-height: 700px` and `max-width: 360px`
 
-### Development Notes
+### Development
 
-- **No Local Server Required:** Open `index.html` directly in browser (or use `python -m http.server` if needed)
-- **Firebase Emulator:** Optional for local testing; instructions in README
-- **Testing:** Manual testing in browser (no Jest, no automation framework yet)
-- **Debugging:** Use browser DevTools; Firebase Auth and Firestore have verbose logging available
+```bash
+# Local dev server (no install required)
+cd wordle
+python3 -m http.server 8000
+# → http://localhost:8000
+```
+Remember: `localhost` must be in Firebase Auth → Authorized Domains.
 
 ### Deployment
 
-1. Push code to GitHub repository
-2. Enable GitHub Pages in Settings (source: `main` branch, `/root` folder)
-3. Firebase project must have GitHub Pages domain in Auth allowed domains
-4. No build step — files are served as-is
+Push to `main` → GitHub Actions (`deploy.yml`) builds and deploys to GitHub Pages automatically. No build step — files served as-is. GitHub Pages source must be set to **GitHub Actions** in repository Settings → Pages.
 
-### Security Rules (Firestore)
+### Firestore Security Rules
 
 ```
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{uid} {
-      allow read, write: if request.auth.uid == uid;
+      allow read, write: if request.auth != null && request.auth.uid == uid;
       match /games/{gameId} {
-        allow read, write: if request.auth.uid == uid;
+        allow read, write: if request.auth != null && request.auth.uid == uid;
       }
-      match /stats {
-        allow read, write: if request.auth.uid == uid;
+      match /stats/{document} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
       }
     }
   }
@@ -118,14 +126,15 @@ service cloud.firestore {
 
 ### Common Tasks
 
-| Task | How |
-|------|-----|
-| Add a new game feature | Edit `js/game.js`, update game state in `app.js`, add UI in `index.html` |
-| Change styling | Modify `css/style.css` only |
-| Fix auth flow | Check `js/auth.js` and Firebase config in `js/firebase-config.js` |
-| Save new stat | Update Firestore collection `users/{uid}/stats` in `js/firestore.js` |
-| Test locally | Open `index.html` in browser (may need local server for CORS) |
+| Task | Where |
+|------|-------|
+| Add game feature | `js/game.js` + `js/app.js` + `index.html` |
+| Change styling / animations | `css/style.css` |
+| Fix auth / login flow | `js/auth.js` + `js/firebase-config.js` |
+| Change Firestore schema | `js/firestore.js` — remember to handle nested array serialization |
+| Add a new stat | `js/app.js` `finishGame()` + `js/firestore.js` `saveStats()` |
+| Change date navigation logic | `js/app.js` `loadDate()`, `dateAddDays()`, `updateDateNav()` |
 
 ---
 
-**Created:** March 2026 | **Status:** Planning phase (no code yet)
+**Created:** March 2026 | **Status:** Active development
