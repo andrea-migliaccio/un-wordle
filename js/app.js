@@ -396,7 +396,8 @@ const App = (() => {
       loadDate(dateAddDays(gs.date, 1));
     });
 
-    document.getElementById('title-home').addEventListener('click', () => {
+    document.getElementById('title-home').addEventListener('click', (e) => {
+      e.preventDefault();
       loadDate(Utils.todayString());
     });
 
