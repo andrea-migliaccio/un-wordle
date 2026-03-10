@@ -1,4 +1,4 @@
-# Copilot Instructions — Paroldle - A Wordle Clone
+# Copilot Instructions — UnWordle - A Wordle Clone
 
 ## Project Overview
 Client-side Wordle replica: Plain JavaScript (ES6), HTML5, CSS3 with Firebase Auth + Firestore. No frameworks, no npm dependencies, no build tools. Deployed to GitHub Pages via GitHub Actions.
