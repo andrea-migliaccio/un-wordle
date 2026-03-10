@@ -396,6 +396,10 @@ const App = (() => {
       loadDate(dateAddDays(gs.date, 1));
     });
 
+    document.getElementById('title-home').addEventListener('click', () => {
+      loadDate(Utils.todayString());
+    });
+
     // Share button
     document.getElementById('share-btn').addEventListener('click', () => {
       const gs  = window.gameState.currentGame;
