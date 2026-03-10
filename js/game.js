@@ -120,12 +120,16 @@ const Game = (() => {
       row.classList.add('keyboard-row');
       keys.forEach(key => {
         const btn = document.createElement('button');
+        btn.type = 'button'; // prevent Enter key from re-triggering click when focused
         btn.classList.add('key');
         btn.textContent = key;
         btn.dataset.key = key;
         if (key === 'ENTER') btn.classList.add('key-wide');
         if (key === '⌫')    btn.classList.add('key-wide');
-        btn.addEventListener('click', () => App.handleKey(key));
+        btn.addEventListener('click', () => {
+          btn.blur(); // return focus to document so Enter keydown isn't captured by the button
+          App.handleKey(key);
+        });
         row.appendChild(btn);
       });
       container.appendChild(row);

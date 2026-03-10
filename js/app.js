@@ -186,6 +186,10 @@ const App = (() => {
         gs.status = 'lost';
         setTimeout(() => showToast(gs.targetWord, 4000), 400);
         finishGame('loss');
+      } else {
+        // Game still in progress — persist current state so user can resume later
+        Firestore.saveGameProgress(window.gameState.user.uid, gs)
+          .catch(err => console.warn('Could not save progress:', err));
       }
     });
   }
@@ -281,7 +285,6 @@ const App = (() => {
           gs.puzzleId   = existingGame.puzzleId;
           gs.guesses    = existingGame.guesses;
           gs.feedback   = existingGame.feedback;
-          gs.status     = existingGame.result === 'win' ? 'won' : 'lost';
 
           existingGame.guesses.forEach((guess, ri) => {
             guess.split('').forEach((letter, ci) => {
@@ -295,12 +298,18 @@ const App = (() => {
           Game.updateKeyboard(window.gameState.keyboard);
           updateDateNav();
 
-          const today = Utils.todayString();
-          const isToday = date === today;
-          const msg = existingGame.result === 'win'
-            ? I18n.t(isToday ? 'toast.won_today' : 'toast.won_past', { n: existingGame.attempts })
-            : I18n.t(isToday ? 'toast.lost_today' : 'toast.lost_past', { word: existingGame.targetWord });
-          setTimeout(() => showToast(msg, 4000), 300);
+          if (existingGame.result === 'playing') {
+            // Resume in-progress game — board is interactive, no toast
+            gs.status = 'playing';
+          } else {
+            gs.status = existingGame.result === 'win' ? 'won' : 'lost';
+            const today  = Utils.todayString();
+            const isToday = date === today;
+            const msg = existingGame.result === 'win'
+              ? I18n.t(isToday ? 'toast.won_today' : 'toast.won_past', { n: existingGame.attempts })
+              : I18n.t(isToday ? 'toast.lost_today' : 'toast.lost_past', { word: existingGame.targetWord });
+            setTimeout(() => showToast(msg, 4000), 300);
+          }
         } else {
           return Game.fetchTodayWord(date).then(({ word, puzzleId }) => {
             window.gameState.currentGame.targetWord = word;
@@ -339,6 +348,8 @@ const App = (() => {
   function initKeyboardListener() {
     document.addEventListener('keydown', e => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      // Prevent Space/Enter from re-activating a focused on-screen keyboard button
+      if (e.key === 'Enter' || e.key === ' ') e.preventDefault();
       handleKey(e.key);
     });
   }
@@ -398,6 +409,7 @@ const App = (() => {
 
     document.getElementById('title-home').addEventListener('click', (e) => {
       e.preventDefault();
+      e.currentTarget.blur(); // prevent the link from keeping focus (Enter would re-trigger it)
       loadDate(Utils.todayString());
     });
 

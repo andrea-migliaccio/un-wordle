@@ -48,6 +48,7 @@ const Firestore = (() => {
     return feedback.map(row => row.split(','));
   }
 
+  // Save a completed game (result: 'win' | 'loss')
   // gameData: { date, puzzleId, targetWord, guesses, feedback, result, attempts, completedAt }
   function saveGame(uid, gameData) {
     const record = Object.assign({}, gameData, {
@@ -56,6 +57,22 @@ const Firestore = (() => {
     return db.collection('users').doc(uid)
       .collection('games').doc(gameData.date)
       .set(record);
+  }
+
+  // Save an in-progress game after each guess (result: 'playing')
+  // gs: { date, puzzleId, targetWord, guesses, feedback }
+  function saveGameProgress(uid, gs) {
+    return db.collection('users').doc(uid)
+      .collection('games').doc(gs.date)
+      .set({
+        date:        gs.date,
+        puzzleId:    gs.puzzleId,
+        targetWord:  gs.targetWord,
+        guesses:     gs.guesses,
+        feedback:    serializeFeedback(gs.feedback),
+        result:      'playing',
+        attempts:    gs.guesses.length
+      });
   }
 
   function deserializeGame(data) {
@@ -86,5 +103,5 @@ const Firestore = (() => {
       });
   }
 
-  return { saveUserProfile, loadStats, saveStats, saveGame, loadGame, loadHistory };
+  return { saveUserProfile, loadStats, saveStats, saveGame, saveGameProgress, loadGame, loadHistory };
 })();

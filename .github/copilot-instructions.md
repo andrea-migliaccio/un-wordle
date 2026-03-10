@@ -141,17 +141,20 @@ service cloud.firestore {
       match /games/{gameDate} {
         function validGame() {
           let d = request.resource.data;
+          let inProgress = d.result == 'playing';
           return d.keys().hasOnly(['date','puzzleId','targetWord','guesses','feedback',
                                    'result','attempts','completedAt'])
+                 || (inProgress && d.keys().hasOnly(['date','puzzleId','targetWord','guesses',
+                                                     'feedback','result','attempts']))
             && isString(d.date) && d.date.size() == 10 && d.date == gameDate
             && isInt(d.puzzleId) && d.puzzleId >= 0
             && isString(d.targetWord) && d.targetWord.size() == 5
             && d.guesses is list && d.guesses.size() >= 1 && d.guesses.size() <= 6
             && d.feedback is list && d.feedback.size() == d.guesses.size()
-            && isString(d.result) && (d.result == 'win' || d.result == 'loss')
+            && isString(d.result) && (d.result == 'win' || d.result == 'loss' || d.result == 'playing')
             && isInt(d.attempts) && d.attempts >= 1 && d.attempts <= 6
             && d.attempts == d.guesses.size()
-            && isTimestamp(d.completedAt);
+            && (inProgress || isTimestamp(d.completedAt));
         }
         allow read:           if isOwner();
         allow create, update: if isOwner() && validGame();
