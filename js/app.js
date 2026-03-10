@@ -91,7 +91,7 @@ const App = (() => {
   function renderHistory(games) {
     const list = document.getElementById('history-list');
     if (!games.length) {
-      list.innerHTML = '<p class="history-empty">Nessuna partita ancora.</p>';
+      list.innerHTML = `<p class="history-empty">${I18n.t('history.empty')}</p>`;
       return;
     }
     list.innerHTML = '';
@@ -146,13 +146,13 @@ const App = (() => {
   function submitGuess() {
     const gs = window.gameState.currentGame;
     if (gs.currentGuess.length < 5) {
-      showToast('Parola troppo corta!');
+      showToast(I18n.t('toast.short'));
       Game.shakeRow(gs.guesses.length);
       return;
     }
 
     if (!Game.isValidWord(gs.currentGuess)) {
-      showToast('Parola non valida!');
+      showToast(I18n.t('toast.invalid'));
       Game.shakeRow(gs.guesses.length);
       return;
     }
@@ -179,7 +179,7 @@ const App = (() => {
         gs.status = 'won';
         setTimeout(() => {
           Game.bounceRow(rowIdx);
-          showToast(WIN_MESSAGES[Math.min(gs.guesses.length - 1, WIN_MESSAGES.length - 1)], 3000);
+          showToast(I18n.t('win.' + (gs.guesses.length - 1)), 3000);
         }, 400);
         finishGame('win');
       } else if (gs.guesses.length >= 6) {
@@ -190,7 +190,7 @@ const App = (() => {
     });
   }
 
-  const WIN_MESSAGES = ['Genio!', 'Magnifico!', 'Impressionante!', 'Splendido!', 'Bravo!', 'Uff, per un pelo!'];
+  const WIN_MESSAGES = []; // kept for backwards compat — strings now in I18n
 
   // ── Game finish ────────────────────────────────────────────────────────────
 
@@ -298,8 +298,8 @@ const App = (() => {
           const today = Utils.todayString();
           const isToday = date === today;
           const msg = existingGame.result === 'win'
-            ? `${isToday ? 'Hai già vinto oggi' : 'Hai vinto'} con ${existingGame.attempts}/6!`
-            : `Partita persa. La parola era: ${existingGame.targetWord}`;
+            ? I18n.t(isToday ? 'toast.won_today' : 'toast.won_past', { n: existingGame.attempts })
+            : I18n.t(isToday ? 'toast.lost_today' : 'toast.lost_past', { word: existingGame.targetWord });
           setTimeout(() => showToast(msg, 4000), 300);
         } else {
           return Game.fetchTodayWord(date).then(({ word, puzzleId }) => {
@@ -310,8 +310,8 @@ const App = (() => {
         }
       })
       .catch(err => {
-        console.error('Errore caricamento partita:', err);
-        showToast('Errore nel caricamento della parola. Riprova.', 4000);
+        console.error('Error loading game:', err);
+        showToast(I18n.t('toast.load_error'), 4000);
       });
   }
 
@@ -350,7 +350,7 @@ const App = (() => {
     document.getElementById('login-btn').addEventListener('click', () => {
       Auth.signIn().catch(err => {
         console.error('Login error:', err);
-        showToast('Errore durante il login. Riprova.', 3000);
+        showToast(I18n.t('toast.login_error'), 3000);
       });
     });
 
@@ -400,7 +400,7 @@ const App = (() => {
     document.getElementById('share-btn').addEventListener('click', () => {
       const gs  = window.gameState.currentGame;
       const text = Utils.formatShare(gs.puzzleId, gs.guesses, gs.feedback, gs.status);
-      Utils.copyToClipboard(text).then(() => showToast('Copiato negli appunti!', 2000));
+      Utils.copyToClipboard(text).then(() => showToast(I18n.t('toast.copied'), 2000));
     });
 
     // Close modals
@@ -421,6 +421,7 @@ const App = (() => {
   // ── Bootstrap ──────────────────────────────────────────────────────────────
 
   function init() {
+    I18n.applyToDOM();
     initUI();
     initKeyboardListener();
 

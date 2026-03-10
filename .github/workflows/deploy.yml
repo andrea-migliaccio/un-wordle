@@ -25,6 +25,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Minify JavaScript
+        run: |
+          for f in js/*.js; do
+            npx --yes terser "$f" --compress --mangle --output "$f"
+            echo "Minified: $f ($(wc -c < "$f") bytes)"
+          done
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
