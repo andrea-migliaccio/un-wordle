@@ -19,6 +19,8 @@ const Game = (() => {
     ['A','S','D','F','G','H','J','K','L'],
     ['ENTER','Z','X','C','V','B','N','M','⌫']
   ];
+  const VIRTUAL_KEY_DEBOUNCE_MS = 50;
+  let lastVirtualKeyPressAt = 0;
 
   // ── localStorage cache ────────────────────────────────────────────────────
 
@@ -131,6 +133,9 @@ const Game = (() => {
         if (key === 'ENTER') btn.classList.add('key-wide');
         if (key === '⌫')    btn.classList.add('key-wide');
         btn.addEventListener('click', () => {
+          const now = Date.now();
+          if (now - lastVirtualKeyPressAt < VIRTUAL_KEY_DEBOUNCE_MS) return;
+          lastVirtualKeyPressAt = now;
           btn.blur(); // return focus to document so Enter keydown isn't captured by the button
           App.handleKey(key);
         });
