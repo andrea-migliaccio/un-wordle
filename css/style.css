@@ -333,8 +333,8 @@ main {
   from { transform: scaleY(0); }
   to   { transform: scaleY(1); }
 }
-.tile.flip-out { animation: flip-out-anim 0.3s ease forwards; }
-.tile.flip-in  { animation: flip-in-anim  0.3s ease forwards; }
+.tile.flip-out { animation: flip-out-anim 0.35s ease forwards; }
+.tile.flip-in  { animation: flip-in-anim  0.35s ease forwards; }
 
 @keyframes bounce-anim {
   0%, 100% { transform: translateY(0); }
@@ -641,5 +641,4 @@ main {
   .key { height: 48px; }
   main { gap: 12px; padding: 12px 0; }
 }
-
 

@@ -169,7 +169,7 @@ const Game = (() => {
   // Reveals a row of tiles with flip animation, staggered per tile
   function revealRow(row, letters, feedback) {
     return new Promise(resolve => {
-      const FLIP_DURATION = 300; // ms per tile
+      const FLIP_DURATION = 350; // ms per tile
       const GAP = 100;           // ms between tiles
 
       letters.forEach((letter, col) => {
