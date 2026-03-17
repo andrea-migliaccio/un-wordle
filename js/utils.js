@@ -53,6 +53,11 @@ const Utils = (() => {
       });
   }
 
+  function isMobileUserAgent() {
+    const ua = navigator.userAgent || '';
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua);
+  }
+
   // Wordle feedback algorithm — handles duplicate letters correctly
   // Returns array of 5 states: 'correct' | 'present' | 'absent'
   function computeFeedback(guess, target) {
@@ -89,5 +94,5 @@ const Utils = (() => {
     return STATE_PRIORITY[next] > STATE_PRIORITY[current || ''] ? next : current;
   }
 
-  return { todayString, formatShare, copyToClipboard, shareText, computeFeedback, bestState };
+  return { todayString, formatShare, copyToClipboard, shareText, isMobileUserAgent, computeFeedback, bestState };
 })();

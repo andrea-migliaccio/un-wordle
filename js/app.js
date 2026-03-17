@@ -458,7 +458,12 @@ const App = (() => {
     document.getElementById('share-btn').addEventListener('click', () => {
       const gs  = window.gameState.currentGame;
       const text = Utils.formatShare(gs.puzzleId, gs.guesses, gs.feedback, gs.status);
-      Utils.shareText(text)
+      const shouldUseNativeShare = Utils.isMobileUserAgent();
+      const shareFlow = shouldUseNativeShare
+        ? Utils.shareText(text)
+        : Promise.resolve({ shared: false, canceled: false, error: null });
+
+      shareFlow
         .then(shareResult => {
           return Utils.copyToClipboard(text).then(() => shareResult);
         })
