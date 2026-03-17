@@ -458,7 +458,24 @@ const App = (() => {
     document.getElementById('share-btn').addEventListener('click', () => {
       const gs  = window.gameState.currentGame;
       const text = Utils.formatShare(gs.puzzleId, gs.guesses, gs.feedback, gs.status);
-      Utils.copyToClipboard(text).then(() => showToast(I18n.t('toast.copied'), 2000));
+      Utils.shareText(text)
+        .then(shareResult => {
+          return Utils.copyToClipboard(text).then(() => shareResult);
+        })
+        .then(shareResult => {
+          if (shareResult.shared) {
+            showToast(I18n.t('toast.shared_copied'), 2200);
+            return;
+          }
+          if (shareResult.error) {
+            showToast(I18n.t('toast.share_failed_copied'), 2500);
+            return;
+          }
+          showToast(I18n.t('toast.copied'), 2000);
+        })
+        .catch(() => {
+          showToast(I18n.t('toast.copy_error'), 2500);
+        });
     });
 
     // Close modals
@@ -506,4 +523,3 @@ const App = (() => {
 
   return { handleKey };
 })();
-

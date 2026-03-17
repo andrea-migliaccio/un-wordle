@@ -39,6 +39,20 @@ const Utils = (() => {
     return Promise.resolve();
   }
 
+  function shareText(text) {
+    if (!navigator.share) {
+      return Promise.resolve({ shared: false, canceled: false, error: null });
+    }
+    return navigator.share({ text })
+      .then(() => ({ shared: true, canceled: false, error: null }))
+      .catch(err => {
+        if (err && err.name === 'AbortError') {
+          return { shared: false, canceled: true, error: null };
+        }
+        return { shared: false, canceled: false, error: err };
+      });
+  }
+
   // Wordle feedback algorithm — handles duplicate letters correctly
   // Returns array of 5 states: 'correct' | 'present' | 'absent'
   function computeFeedback(guess, target) {
@@ -75,5 +89,5 @@ const Utils = (() => {
     return STATE_PRIORITY[next] > STATE_PRIORITY[current || ''] ? next : current;
   }
 
-  return { todayString, formatShare, copyToClipboard, computeFeedback, bestState };
+  return { todayString, formatShare, copyToClipboard, shareText, computeFeedback, bestState };
 })();
