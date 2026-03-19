@@ -419,6 +419,92 @@ const App = (() => {
       }
     });
 
+    // Theme toggle (persisted in localStorage)
+    function applyTheme(theme) {
+      document.body.setAttribute('data-theme', theme);
+      localStorage.setItem('unwordle_theme', theme);
+      const icon = document.getElementById('theme-icon');
+      if (icon) icon.textContent = (theme === 'light') ? '☀️' : '🌙';
+      const menuIcon = document.getElementById('menu-theme-icon');
+      if (menuIcon) menuIcon.textContent = (theme === 'light') ? '☀️' : '🌙';
+    }
+
+    function initTheme() {
+      const stored = localStorage.getItem('unwordle_theme') || 'dark';
+      applyTheme(stored);
+    }
+
+    document.getElementById('theme-toggle')?.addEventListener('click', () => {
+      const current = document.body.getAttribute('data-theme') || 'dark';
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+
+    // Mobile menu toggle with backdrop
+    const menuBtn = document.getElementById('menu-btn');
+    const headerMenu = document.getElementById('header-menu');
+    let headerMenuBackdrop = null;
+
+    function createBackdrop() {
+      const d = document.createElement('div');
+      d.id = 'header-menu-backdrop';
+      d.style.position = 'fixed';
+      d.style.inset = '0';
+      d.style.zIndex = '140';
+      d.style.background = 'rgba(0,0,0,0.45)';
+      d.addEventListener('click', () => closeHeaderMenu());
+      return d;
+    }
+
+    function openHeaderMenu() {
+      if (!headerMenu) return;
+      headerMenu.classList.remove('hidden');
+      menuBtn?.setAttribute('aria-expanded', 'true');
+      headerMenu.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('header-menu-open');
+      if (!headerMenuBackdrop) {
+        headerMenuBackdrop = createBackdrop();
+        document.body.appendChild(headerMenuBackdrop);
+      }
+    }
+
+    function closeHeaderMenu() {
+      if (!headerMenu) return;
+      headerMenu.classList.add('hidden');
+      menuBtn?.setAttribute('aria-expanded', 'false');
+      headerMenu.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('header-menu-open');
+      if (headerMenuBackdrop) {
+        headerMenuBackdrop.remove();
+        headerMenuBackdrop = null;
+      }
+    }
+
+    menuBtn?.addEventListener('click', () => {
+      if (!headerMenu) return;
+      if (headerMenu.classList.contains('hidden')) openHeaderMenu(); else closeHeaderMenu();
+    });
+
+    // Bind menu actions to existing handlers
+    document.getElementById('menu-stats-btn')?.addEventListener('click', () => {
+      document.getElementById('stats-btn').click();
+      closeHeaderMenu();
+    });
+    document.getElementById('menu-history-btn')?.addEventListener('click', () => {
+      document.getElementById('history-btn').click();
+      closeHeaderMenu();
+    });
+    document.getElementById('menu-logout-btn')?.addEventListener('click', () => {
+      document.getElementById('logout-btn').click();
+      closeHeaderMenu();
+    });
+    document.getElementById('menu-theme-btn')?.addEventListener('click', () => {
+      document.getElementById('theme-toggle')?.click();
+      closeHeaderMenu();
+    });
+
+    // Initialize theme
+    initTheme();
+
     // Stats button
     document.getElementById('stats-btn').addEventListener('click', () => {
       renderStats();
@@ -490,12 +576,27 @@ const App = (() => {
       });
     });
 
-    // Close modal on Escape
+    // Close modal on Escape and close header menu if open
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
         document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
+        // Ensure header menu is closed via the centralized function so backdrop is removed
+        if (headerMenu && !headerMenu.classList.contains('hidden')) {
+          closeHeaderMenu();
+        }
       }
     });
+
+    // Note: backdrop handles clicks outside; Escape handler above will call closeHeaderMenu()
+    // Also add a capturing pointerdown handler to reliably close the menu on outside interaction
+    document.addEventListener('pointerdown', (e) => {
+      if (!headerMenu) return;
+      const open = !headerMenu.classList.contains('hidden');
+      if (!open) return;
+      const target = e.target;
+      if (target && (target.closest('#header-menu') || target.closest('#menu-btn'))) return;
+      closeHeaderMenu();
+    }, true);
   }
 
   // ── Bootstrap ──────────────────────────────────────────────────────────────

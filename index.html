@@ -69,8 +69,36 @@
             <path d="M17 7l-1.4 1.4 2.6 2.6H9v2h9.2l-2.6 2.6L17 17l5-5-5-5zM5 5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h7v-2H5V5z"/>
           </svg>
         </button>
+        <!-- Theme toggle (desktop) -->
+        <button id="theme-toggle" aria-label="Toggle theme" title="Tema">
+          <span id="theme-icon">🌙</span>
+        </button>
       </div>
+      <!-- Hamburger menu button moved outside .header-right so it remains visible when .header-right is hidden -->
+      <button id="menu-btn" aria-label="Apri menu" title="Menu">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zM3 11h18v2H3zM3 16h18v2H3z"/></svg>
+      </button>
     </header>
+
+    <!-- Collapsed header menu for small screens -->
+    <div id="header-menu" class="header-menu hidden" role="menu" aria-hidden="true">
+      <button id="menu-stats-btn" role="menuitem" data-i18n-title="header.stats">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 11V3H8v6H2v12h20V11h-6zm-6-6h4v14h-4V5zM4 11h4v8H4v-8zm16 8h-4v-6h4v6z"/></svg>
+        <span>Stats</span>
+      </button>
+      <button id="menu-history-btn" role="menuitem" data-i18n-title="header.history">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M13 3a9 9 0 0 0-9 9H1l3.9 3.9.1.2L9 12H6c0-3.9 3.1-7 7-7s7 3.1 7 7-3.1 7-7 7c-1.9 0-3.6-.7-4.9-1.9L6.7 18.4A8.96 8.96 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.3 2.5-.7 1.2L11 14V8h1z"/></svg>
+        <span>History</span>
+      </button>
+      <button id="menu-theme-btn" role="menuitem">
+        <span id="menu-theme-icon">🌙</span>
+        <span>Tema</span>
+      </button>
+      <button id="menu-logout-btn" role="menuitem" data-i18n-title="header.logout">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17 7l-1.4 1.4 2.6 2.6H9v2h9.2l-2.6 2.6L17 17l5-5-5-5zM5 5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h7v-2H5V5z"/></svg>
+        <span>Logout</span>
+      </button>
+    </div>
 
     <main>
       <!-- Date navigation bar -->

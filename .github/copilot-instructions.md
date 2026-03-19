@@ -28,11 +28,13 @@ wordle/
 │   ├── auth.js                   # Firebase Auth (Google provider, login/logout)
 │   ├── firebase-config.js        # Firebase project config (public keys — no secrets)
 │   ├── firestore.js              # All Firestore operations (games, stats, profile)
+│   ├── anon-storage.js           # localStorage adapter — same API as Firestore module
+│   ├── i18n.js                   # Browser language detection + string lookup (it/en)
 │   └── utils.js                  # Pure helpers: feedback algo, share format, date
 ├── .github/
 │   ├── workflows/deploy.yml      # GitHub Pages deploy on push to main
 │   └── copilot-instructions.md  # This file
-└── READEM.md                     # Dev notes (local server instructions)
+└── README.md                     # Dev notes (local server instructions, word backfill scripts)
 ```
 
 ### Key Conventions
@@ -50,7 +52,8 @@ wordle/
      currentGame: { date, puzzleId, targetWord, guesses, feedback, currentGuess, status },
      user:        { uid, displayName, email },
      stats:       { gamesPlayed, gamesWon, currentStreak, maxStreak, distribution },
-     keyboard:    {}  // letter → 'correct' | 'present' | 'absent'
+     keyboard:    {},  // letter → 'correct' | 'present' | 'absent'
+     anonMode:    false  // true when playing without Firebase Auth
    }
    ```
    - `currentGame.date` is the **navigated date**, not necessarily today — use `Utils.todayString()` for "today"
@@ -63,10 +66,12 @@ wordle/
    - **Nested arrays are not supported by Firestore.** `feedback` (array of arrays) is serialized as an array of comma-joined strings on save and deserialized on load — this is handled transparently inside `firestore.js` (`serializeFeedback` / `deserializeFeedback`). The rest of the codebase always works with the native `string[][]` format.
 
 4. **Code Organization**
-   - Each JS file exposes one module-level `const` (e.g. `Game`, `Auth`, `Firestore`, `Utils`, `App`)
+   - Each JS file exposes one module-level `const` (e.g. `Game`, `Auth`, `Firestore`, `AnonStorage`, `I18n`, `Utils`, `App`)
    - No `async/await` — use `.then()` chains throughout for Firebase promise consistency
    - HTML is the source of truth for UI state (show/hide via `.hidden` class)
-   - Script load order in `index.html` matters: Firebase SDKs → `firebase-config.js` → `auth.js` → `utils.js` → `firestore.js` → `game.js` → `app.js`
+   - `App.getStorage()` returns either `Firestore` or `AnonStorage` based on `window.gameState.anonMode` — all persistence calls go through this abstraction
+   - `I18n.t('key')` for all user-visible strings; supports `{placeholder}` interpolation. Language auto-detected from `navigator.language` (`it` or `en`). DOM elements use `data-i18n="key"` / `data-i18n-title="key"` attributes.
+   - Script load order in `index.html` matters: Firebase SDKs → `firebase-config.js` → `i18n.js` → `auth.js` → `utils.js` → `firestore.js` → `anon-storage.js` → `game.js` → `app.js`
 
 5. **Game Logic**
    - **Wordle Rules:** 5-letter words, 6 attempts max, color feedback (green=correct, yellow=present, gray=absent)
@@ -81,8 +86,8 @@ wordle/
    - Past unplayed games can be played and saved normally
 
 7. **Share Feature**
-   - Format: emoji grid (🟩🟨⬛) per row + `Wordle #N X/6` header
-   - `Utils.formatShare(puzzleId, guesses, feedback, status)` → clipboard via `navigator.clipboard.writeText()`
+   - Format: emoji grid (🟩🟨⬛) per row + `UnWordle #N X/6` header
+   - `Utils.formatShare(puzzleId, guesses, feedback, status)` → tries `navigator.share()` first (mobile), falls back to `navigator.clipboard.writeText()`
    - Share button visible in the stats modal only when the current game is finished
 
 8. **Styling**
@@ -103,7 +108,9 @@ Remember: `localhost` must be in Firebase Auth → Authorized Domains.
 
 ### Deployment
 
-Push to `main` → GitHub Actions (`deploy.yml`) builds and deploys to GitHub Pages automatically. No build step — files served as-is. GitHub Pages source must be set to **GitHub Actions** in repository Settings → Pages.
+Push to `main` → GitHub Actions (`deploy.yml`) **minifies all `js/*.js` with terser** then deploys to GitHub Pages. No other build step. GitHub Pages source must be set to **GitHub Actions** in repository Settings → Pages.
+
+Functions (`functions/**`) are deployed separately via `deploy-functions.yml` using the `FIREBASE_SERVICE_ACCOUNT` GitHub secret.
 
 ### Firestore Security Rules (complete — keep this updated)
 
@@ -215,7 +222,7 @@ service cloud.firestore {
 ### Word Resolution (client-side priority order)
 
 1. `localStorage` cache (`wordle_word_{date}`) — fastest, zero network
-2. Firestore `words/{date}` — populated daily by Cloud Function at 00:05 UTC
+2. Firestore `words/{date}` — populated daily by Cloud Function at 00:05 UTC (**skipped in anon mode**)
 3. `window.CUSTOM_CORS_PROXY` (if set in `firebase-config.js`) — first proxy if defined
 4. `corsproxy.io` — fallback proxy
 5. `allorigins.win` — final fallback proxy
