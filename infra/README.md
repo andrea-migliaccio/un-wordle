@@ -214,20 +214,29 @@ az account show --query id -o tsv  # → AZURE_SUBSCRIPTION_ID
 
 ## 4. Prima run: deploy dell'infrastruttura Bicep
 
-Una volta aggiunti i 3 secrets, il workflow `deploy-infra.yml` si attiverà automaticamente ad ogni push su `main` che modifica `infra/**`.
+Il deploy Bicep avviene in **due fasi** perché Azure richiede che il CNAME DNS esista prima di poter registrare il custom domain.
 
-Per il primo deploy:
+### Fase 1 — Crea la Static Web App (senza custom domain)
 
-1. Assicurati di aver committato tutti i file della cartella `infra/`
+`infra/main.bicepparam` ha già `deployCustomDomain = false` per default.
+
+1. Committa tutti i file della cartella `infra/`
 2. Fai push su `main`
-3. Vai su **GitHub → Actions** → cerca il workflow **"Deploy Azure Infrastructure (Bicep)"**
+3. Vai su **GitHub → Actions** → workflow **"Deploy Azure Infrastructure (Bicep)"**
 4. Verifica che il job sia verde ✅
+5. Alla fine del log trovi l'output `defaultHostname`, tipo `swa-unwordle.azurestaticapps.net` — **copialo**, ti serve per il CNAME su Aruba
+
+### Fase 2 — Aggiungi il custom domain (dopo DNS configurato)
+
+Dopo aver completato la sezione 6 (DNS Aruba) e aspettato la propagazione:
+
+1. Apri `infra/main.bicepparam`
+2. Cambia `deployCustomDomain = false` → `deployCustomDomain = true`
+3. Committa e pusha → il workflow riesegue e registra il custom domain su Azure
 
 Se il job fallisce, controlla i log per errori comuni:
 - `AuthorizationFailed`: il ruolo Contributor non è stato assegnato correttamente (ripeti 2.4)
-- `InvalidResourceLocation`: Azure Static Web Apps non supporta tutte le region — le disponibili sono `westus2`, `centralus`, `eastus2`, `westeurope`, `eastasia`. I file Bicep usano già `westeurope`.
-
-> **Nota sul custom domain:** il resource Bicep `customDomains` potrebbe fallire al primo deploy se il record DNS non è ancora configurato. È normale — vedi sezione 6. Puoi commentare temporaneamente il blocco `resource domain` in `main.bicep`, fare il primo deploy, configurare il DNS, poi ripristinarlo.
+- `CNAME Record is invalid`: il record DNS non è ancora propagato — attendi qualche minuto e riprova
 
 ---
 
