@@ -20,6 +20,9 @@ const ANON_FLAG_KEY = 'unwordle_anon';
 
 const App = (() => {
 
+  // Lock to prevent double-submission while a guess row is being revealed
+  let isSubmitting = false;
+
   // Returns the active storage adapter (Firestore or AnonStorage)
   function getStorage() {
     return window.gameState.anonMode ? AnonStorage : Firestore;
@@ -152,6 +155,8 @@ const App = (() => {
   }
 
   function submitGuess() {
+    if (isSubmitting) return;
+
     const gs = window.gameState.currentGame;
     if (gs.currentGuess.length < 5) {
       showToast(I18n.t('toast.short'));
@@ -164,6 +169,8 @@ const App = (() => {
       Game.shakeRow(gs.guesses.length);
       return;
     }
+
+    isSubmitting = true;
 
     const guess    = gs.currentGuess;
     const feedback = Utils.computeFeedback(guess, gs.targetWord);
@@ -199,6 +206,8 @@ const App = (() => {
         getStorage().saveGameProgress(window.gameState.user.uid, gs)
           .catch(err => console.warn('Could not save progress:', err));
       }
+
+      isSubmitting = false;
     });
   }
 
@@ -382,6 +391,7 @@ const App = (() => {
   // ── Event listeners ────────────────────────────────────────────────────────
 
   function resetGameState() {
+    isSubmitting = false;
     window.gameState = {
       currentGame: { date: null, puzzleId: null, targetWord: null, guesses: [], feedback: [], currentGuess: '', status: 'playing' },
       user:     { uid: null, displayName: null, email: null },
