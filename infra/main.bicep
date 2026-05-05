@@ -2,7 +2,7 @@
 param swaName string = 'swa-unwordle'
 
 @description('Azure region for the Static Web App')
-param location string = 'italynorth'
+param location string = 'westeurope'
 
 @description('Custom domain to attach to the Static Web App')
 param customDomain string = 'unwordle.tinyapps.it'

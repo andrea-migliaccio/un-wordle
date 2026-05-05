@@ -66,12 +66,12 @@ Il workflow `deploy-infra.yml` usa **OIDC (OpenID Connect)** per autenticarsi su
 4. Compila:
    - **Subscription:** la tua sottoscrizione (es. "Azure subscription 1")
    - **Resource group:** `rg-unwordle`
-   - **Region:** `Italy North`
+   - **Region:** `West Europe` (Italy North non è supportata da Azure Static Web Apps)
 5. Clicca **Review + create** → **Create**
 
 **Via CLI (alternativa):**
 ```bash
-az group create --name rg-unwordle --location italynorth
+az group create --name rg-unwordle --location westeurope
 ```
 
 ---
@@ -225,7 +225,7 @@ Per il primo deploy:
 
 Se il job fallisce, controlla i log per errori comuni:
 - `AuthorizationFailed`: il ruolo Contributor non è stato assegnato correttamente (ripeti 2.4)
-- `InvalidResourceLocation`: la region `italynorth` non supporta SWA Free — in quel caso usa `westeurope` nel file `infra/main.bicepparam`
+- `InvalidResourceLocation`: Azure Static Web Apps non supporta tutte le region — le disponibili sono `westus2`, `centralus`, `eastus2`, `westeurope`, `eastasia`. I file Bicep usano già `westeurope`.
 
 > **Nota sul custom domain:** il resource Bicep `customDomains` potrebbe fallire al primo deploy se il record DNS non è ancora configurato. È normale — vedi sezione 6. Puoi commentare temporaneamente il blocco `resource domain` in `main.bicep`, fare il primo deploy, configurare il DNS, poi ripristinarlo.
 
