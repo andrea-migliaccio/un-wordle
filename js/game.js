@@ -19,7 +19,7 @@ const Game = (() => {
     ['A','S','D','F','G','H','J','K','L'],
     ['ENTER','Z','X','C','V','B','N','M','⌫']
   ];
-  const VIRTUAL_KEY_DEBOUNCE_MS = 50;
+  const VIRTUAL_KEY_DEBOUNCE_MS = 120;
   let lastVirtualKeyPressAt = 0;
 
   // ── localStorage cache ────────────────────────────────────────────────────

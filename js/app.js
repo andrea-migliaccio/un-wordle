@@ -23,6 +23,18 @@ const App = (() => {
   // Lock to prevent double-submission while a guess row is being revealed
   let isSubmitting = false;
 
+  // General UI debounce — prevents rapid repeated taps on action buttons
+  const UI_DEBOUNCE_MS = 300;
+  const lastClickAt = {};   // buttonId → timestamp
+  function debounced(id, fn) {
+    return function() {
+      const now = Date.now();
+      if (now - (lastClickAt[id] || 0) < UI_DEBOUNCE_MS) return;
+      lastClickAt[id] = now;
+      fn.apply(this, arguments);
+    };
+  }
+
   // Returns the active storage adapter (Firestore or AnonStorage)
   function getStorage() {
     return window.gameState.anonMode ? AnonStorage : Firestore;
@@ -516,42 +528,42 @@ const App = (() => {
     initTheme();
 
     // Stats button
-    document.getElementById('stats-btn').addEventListener('click', () => {
+    document.getElementById('stats-btn').addEventListener('click', debounced('stats', () => {
       renderStats();
       openModal('stats-modal');
-    });
+    }));
 
     // History button
-    document.getElementById('history-btn').addEventListener('click', () => {
+    document.getElementById('history-btn').addEventListener('click', debounced('history', () => {
       const uid = window.gameState.user.uid;
       if (!uid) return;
       getStorage().loadHistory(uid, 30).then(games => {
         renderHistory(games);
         openModal('history-modal');
       });
-    });
+    }));
 
     // Date navigation arrows
-    document.getElementById('nav-prev').addEventListener('click', () => {
+    document.getElementById('nav-prev').addEventListener('click', debounced('nav-prev', () => {
       const prevDate = dateAddDays(window.gameState.currentGame.date, -1);
       loadDate(prevDate);
-    });
+    }));
 
-    document.getElementById('nav-next').addEventListener('click', () => {
+    document.getElementById('nav-next').addEventListener('click', debounced('nav-next', () => {
       const gs    = window.gameState.currentGame;
       const today = Utils.todayString();
       if (gs.date >= today) return;
       loadDate(dateAddDays(gs.date, 1));
-    });
+    }));
 
-    document.getElementById('title-home').addEventListener('click', (e) => {
+    document.getElementById('title-home').addEventListener('click', debounced('title-home', (e) => {
       e.preventDefault();
       e.currentTarget.blur(); // prevent the link from keeping focus (Enter would re-trigger it)
       loadDate(Utils.todayString());
-    });
+    }));
 
     // Share button
-    document.getElementById('share-btn').addEventListener('click', () => {
+    document.getElementById('share-btn').addEventListener('click', debounced('share', () => {
       const gs  = window.gameState.currentGame;
       const text = Utils.formatShare(gs.puzzleId, gs.guesses, gs.feedback, gs.status);
       const shouldUseNativeShare = Utils.isMobileUserAgent();
@@ -577,7 +589,7 @@ const App = (() => {
         .catch(() => {
           showToast(I18n.t('toast.copy_error'), 2500);
         });
-    });
+    }));
 
     // Close modals
     document.querySelectorAll('.modal-close, .modal-backdrop').forEach(el => {
